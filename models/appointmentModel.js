@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
-const Schema = mongoose.Schema;
-export const UserSchema = new Schema({
+// const Schema = mongoose.Schema;
+const appointmentSchema = mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -16,3 +16,5 @@ export const UserSchema = new Schema({
     required: [true, "Please add a description for the appointment"],
   },
 });
+
+module.exports = mongoose.model("Appointment", appointmentSchema);

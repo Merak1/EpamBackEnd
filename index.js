@@ -1,16 +1,23 @@
 const express = require("express");
 const {default: mongoose} = require("mongoose");
-const {default: routes} = require("./routes/userRouter");
+const {errorHandler} = require("./middleware/errorMiddleware");
+// const {default: routes} = require("./routes/userRouter");
+// const {default: routes} = require("./routes/appointmentRouter");
+
+const {default: userRoutes} = require("./routes/userRouter");
+const {default: AppointmentRoutes} = require("./routes/appointmentRouter");
+const {logError, returnError} = require("./middleware/errorHandlerMiddleware");
+
 const {ServerApiVersion} = require("mongodb");
 const cors = require("cors");
 require("dotenv").config();
-const {errorHandler} = require("./middleware/errorMiddleware");
 const {protect} = require("./middleware/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT;
 const db = require("./helpers/uri");
 
+app.use(errorHandler);
 app.use(express.urlencoded({extended: true}));
 
 app.use(express.json());
@@ -35,10 +42,13 @@ mongoose.connect(
   }
 );
 
-routes(app);
-// app.use("/users", require("./routes/userRouter"));
+app.use("/appointments", require("./routes/appointmentRouter"));
+app.use("/users", require("./routes/userRouter"));
 
-app.use(errorHandler);
+// AppointmentRoutes(app);
+// userRoutes(app);
+app.use(logError);
+app.use(returnError);
 app.get("/", (req, res) => res.send(`Benis ${PORT}`));
 
 app.listen(PORT, () => console.log(`Example app listening on PORT ${PORT}!`));

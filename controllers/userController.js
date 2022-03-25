@@ -7,27 +7,28 @@ import chalk from "chalk";
 import {UserSchema} from "../models/userModel";
 
 const warning = chalk.hex("#FFA500");
-const one = chalk.hex("#00a1be");
-const two = chalk.hex("#beb100");
-const three = chalk.hex("#eb51d6");
+const blue = chalk.hex("#00a1be");
+const yellow = chalk.hex("#beb100");
+const pink = chalk.hex("#eb51d6");
+const salmon = chalk.hex("#ff4f4f");
 
 const User = mongoose.model("User", UserSchema);
 
 export const addNewUser = asyncHandler(async (req, res) => {
   let {firstName, lastName, email, phone, isdoctor, password} = req.body;
 
-  //? This is in order for the Admin user to create Users with a default password,
-  //? it should be changed the first time the user enters
-  //! Do not do this
+  // //? This is in order for the Admin user to create Users with a default password,
+  // //? it should be changed the first time the user enters
+  // //! Do not do this
 
-  if (password === undefined /*and the user is type Admin*/) {
-    password = "default";
-  }
-  //? Validate that the form is sending all the data
-  // if (!firstName || !lastName || !email) {
-  //   req.status(400);
-  //   throw new Error("please ");
+  // if (password === undefined /*and the user is type Admin*/) {
+  //   password = "default";
   // }
+  //? Validate that the form is sending all the data
+  if (!firstName || !lastName || !email || !phone) {
+    req.status(400);
+    throw new Error("please send all data ");
+  }
 
   //? Prevent duplicate accounts
   const userExists = await User.findOne({email});
@@ -35,35 +36,34 @@ export const addNewUser = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error(warning("User already exists"));
   }
+  // Hash password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
-  const saltRounds = 10;
-  let hashedPassword;
-  bcrypt.hash(password, saltRounds).then(function (hash) {
-    // Store hash in your password DB.
-    console.log(`📞  hash inside bcrypt function=>  ${hash}`);
-    hashedPassword = hash;
-    const createdUser = new User(req.body);
-    createdUser.password = hashedPassword;
-
-    createdUser.token = generateToken(createdUser._id);
-    console.log(`🙌  Created User Token =>  ${createdUser.token}`);
-    console.log(`🎂  Created User =>  ${createdUser}`);
-    createdUser.save((err, createdUser) => {
-      if (err) {
-        res.status(400);
-        res.send(err);
-        throw new Error("Invalid User Data");
-      }
-      console.log(
-        `🎶  createdUser the one that is sent to the DB=>  ${createdUser}`
-      );
-      res.json(createdUser);
-      res.status(201);
-    });
+  // Create user
+  const user = await User.create({
+    firstName,
+    lastName,
+    email,
+    phone,
+    isdoctor,
+    password: hashedPassword,
   });
 
-  console.log(`😎  password outside =>  ${password}`);
-  console.log(`🌹  hashedPassword outside =>  ${hashedPassword}`);
+  if (user) {
+    res.status(201).json({
+      _id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      email: user.email,
+      isdoctor: user.isdoctor,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid user data");
+  }
 });
 
 export const loginUser = asyncHandler(async (req, res) => {
@@ -72,17 +72,17 @@ export const loginUser = asyncHandler(async (req, res) => {
   const {email, password, _id} = req.body;
 
   const user = await User.findOne({email});
-  console.log(one(`email=>  ${email}`));
+  console.log(blue(`email=>  ${email}`));
 
-  console.log(two(`password=>  ${password}`));
+  console.log(yellow(`password=>  ${password}`));
 
-  // console.log(three(`user=>  ${user}`));
+  // console.log(pink(`user=>  ${user}`));
 
   if (user && (await bcrypt.compare(password, user.password))) {
     // user
     // user.token = generateToken(user._id);
     user.token = generateToken(_id);
-    console.log(three(`user=>  ${user}`));
+    console.log(pink(`user=>  ${user}`));
     console.log(warning(`token=>  ${user.token}`));
 
     // res.json(user);
@@ -110,17 +110,8 @@ export const generateToken = (id) => {
   });
 };
 export const getMe = asyncHandler(async (req, res) => {
-  const {firstName, lastName, email, phone, isdoctor, _id} = await User.findById(
-    console.log(one(`req.user._id=>  ${req.user._id}`)),
-    req.user._id
-  );
-
-  req.status(200).json({
-    id: _id,
-    firstName,
-    lastName,
-    email,
-  });
+  res.status(200);
+  res.json(req.user);
 });
 export const deleteUserWithId = asyncHandler(async (req, res) => {
   User.remove({_id: req.params.UserId}, (err, User) => {
